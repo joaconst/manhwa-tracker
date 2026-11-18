@@ -115,20 +115,37 @@
       <div class="toolbar">
         <p class="section-title" id="section-title"></p>
         <div class="toolbar-controls">
-          <label class="select">
-            <span>Género</span>
-            <select id="filter-genre"></select>
-          </label>
-          <label class="select">
-            <span>Orden</span>
-            <select id="sort">
+          <div class="custom-select" data-select="genre">
+            <button type="button" class="select-btn" id="btn-filter-genre" aria-haspopup="listbox" aria-expanded="false" title="Filtrar por género">
+              <span class="select-k">Género</span>
+              <span class="select-value" id="val-filter-genre">Todos</span>
+              <svg class="select-chevron" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <div class="select-dropdown" id="dropdown-filter-genre" role="listbox" hidden>
+              <div class="select-options" id="options-filter-genre"></div>
+            </div>
+            <select id="filter-genre" class="sr-only" tabindex="-1" aria-hidden="true"></select>
+          </div>
+
+          <div class="custom-select" data-select="sort">
+            <button type="button" class="select-btn" id="btn-sort" aria-haspopup="listbox" aria-expanded="false" title="Ordenar lista">
+              <span class="select-k">Orden</span>
+              <span class="select-value" id="val-sort">Actualización</span>
+              <svg class="select-chevron" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <div class="select-dropdown" id="dropdown-sort" role="listbox" hidden>
+              <div class="select-options" id="options-sort"></div>
+            </div>
+            <select id="sort" class="sr-only" tabindex="-1" aria-hidden="true">
               <option value="recent">Actualización</option>
               <option value="progress">Progreso</option>
               <option value="title">Título A–Z</option>
               <option value="total">Capítulos</option>
             </select>
-          </label>
+          </div>
+
           <div class="seg" id="view-toggle" role="group" aria-label="Vista">
+            <span class="seg-thumb" aria-hidden="true"></span>
             <button data-view="grid" class="is-active" title="Grilla" aria-label="Vista de grilla">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>
             </button>

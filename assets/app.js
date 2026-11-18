@@ -492,6 +492,10 @@ function paintShell() {
   ui.$$("button", el.viewToggle).forEach((btn) => {
     btn.classList.toggle("is-active", btn.dataset.view === state.prefs.view);
   });
+  el.viewToggle.dataset.active = state.prefs.view;
+
+  ui.syncCustomSelect(el.genre);
+  ui.syncCustomSelect(el.sort);
 
   if (state.user?.nick) el.menuUser.textContent = `@${state.user.nick}`;
 }
@@ -733,23 +737,37 @@ function bindStatic() {
     }, 120);
   });
 
+  ui.setupCustomDropdowns();
+  ui.syncCustomSelect(el.genre);
+  ui.syncCustomSelect(el.sort);
+
   el.genre.addEventListener("change", () => {
     state.prefs.filters[state.prefs.tab].genre = el.genre.value;
+    ui.syncCustomSelect(el.genre);
     store.savePrefs(state.prefs);
     paintGrid();
   });
 
   el.sort.addEventListener("change", () => {
     state.prefs.filters[state.prefs.tab].sort = el.sort.value;
+    ui.syncCustomSelect(el.sort);
     store.savePrefs(state.prefs);
     paintGrid();
   });
 
+  function setView(view) {
+    state.prefs.view = view;
+    el.viewToggle.dataset.active = view;
+    ui.$$("button", el.viewToggle).forEach((btn) => {
+      btn.classList.toggle("is-active", btn.dataset.view === view);
+    });
+    store.savePrefs(state.prefs);
+    paintGrid();
+  }
+
   ui.$$("button", el.viewToggle).forEach((btn) => {
     btn.addEventListener("click", () => {
-      state.prefs.view = btn.dataset.view;
-      store.savePrefs(state.prefs);
-      paintGrid();
+      setView(btn.dataset.view);
     });
   });
 

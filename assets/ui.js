@@ -507,3 +507,85 @@ export function toast(title, message = "", kind = "info") {
     setTimeout(() => node.remove(), 300);
   }, 5200);
 }
+
+/* ------------------------------------------------------------------ */
+/* custom select dropdowns                                            */
+/* ------------------------------------------------------------------ */
+
+export function syncCustomSelect(selectEl) {
+  if (!selectEl) return;
+  const isGenre = selectEl.id === "filter-genre";
+  const valEl = isGenre ? $("#val-filter-genre") : $("#val-sort");
+  const optionsEl = isGenre ? $("#options-filter-genre") : $("#options-sort");
+  if (!valEl || !optionsEl) return;
+
+  const currentVal = selectEl.value;
+  let selectedText = "";
+
+  optionsEl.innerHTML = Array.from(selectEl.options)
+    .map((opt) => {
+      const isSelected = opt.value === currentVal;
+      if (isSelected) selectedText = opt.text;
+      return `<button type="button" class="select-option ${isSelected ? "is-selected" : ""}" role="option" aria-selected="${isSelected}" data-val="${esc(opt.value)}">
+        <span>${esc(opt.text)}</span>
+        <svg class="option-check" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+      </button>`;
+    })
+    .join("");
+
+  if (!selectedText && selectEl.options.length) {
+    selectedText = selectEl.options[0].text;
+  }
+  valEl.textContent = selectedText || "—";
+
+  $$(".select-option", optionsEl).forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      selectEl.value = btn.dataset.val;
+      selectEl.dispatchEvent(new Event("change"));
+      closeAllDropdowns();
+    });
+  });
+}
+
+function closeAllDropdowns() {
+  const dropdowns = [
+    { btn: $("#btn-filter-genre"), menu: $("#dropdown-filter-genre") },
+    { btn: $("#btn-sort"), menu: $("#dropdown-sort") },
+  ];
+  dropdowns.forEach(({ btn, menu }) => {
+    if (!btn || !menu) return;
+    btn.classList.remove("is-open");
+    btn.setAttribute("aria-expanded", "false");
+    menu.hidden = true;
+  });
+}
+
+export function setupCustomDropdowns() {
+  const dropdowns = [
+    { btn: $("#btn-filter-genre"), menu: $("#dropdown-filter-genre") },
+    { btn: $("#btn-sort"), menu: $("#dropdown-sort") },
+  ];
+
+  dropdowns.forEach(({ btn, menu }) => {
+    if (!btn || !menu) return;
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const isOpen = !menu.hidden;
+      closeAllDropdowns();
+      if (!isOpen) {
+        btn.classList.add("is-open");
+        btn.setAttribute("aria-expanded", "true");
+        menu.hidden = false;
+      }
+    });
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".custom-select")) closeAllDropdowns();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeAllDropdowns();
+  });
+}
