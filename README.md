@@ -2,7 +2,7 @@
 
 Dashboard personal para ver **qué estás leyendo, qué tenés planeado y qué terminaste** en [manhwaweb.com](https://manhwaweb.com), con portadas, progreso por capítulo, notas e historial.
 
-- **Sin backend, sin base de datos, sin build.** Son archivos estáticos.
+- **Sin base de datos, sin build.** Es estático + una función mínima en Vercel para las portadas.
 - La API de ManhwaWeb se consulta **desde tu navegador** con tu propio token.
 - Se actualiza sola cada 15 segundos mientras la pestaña está abierta.
 
@@ -16,6 +16,8 @@ manhwa-tracker/
 │  ├─ store.js      localStorage (token, snapshot, notas, historial)
 │  ├─ ui.js         render de tabs, hero, grilla, modal
 │  └─ charts.js     racha y actividad
+├─ api/
+│  └─ img.js        proxy de portadas (Vercel serverless)
 ├─ userscript/
 │  └─ manhwaweb-tracker.user.js
 └─ README.md
@@ -105,6 +107,16 @@ También funciona en Netlify, Cloudflare Pages o GitHub Pages.
 
 Cada pestaña guarda su propio orden y filtro de género. La URL cambia a `#/leyendo`, `#/planeado` o `#/finalizado`.
 
+### “Leyendo ahora”
+
+ManhwaWeb no expone la fecha de tu última lectura, solo el capítulo actual de cada obra. Para no adivinar, el hero usa esta prioridad:
+
+1. La obra que elegiste con **Cambiar** (queda guardada en este navegador).
+2. La última obra donde el dashboard **detectó un capítulo nuevo tuyo**.
+3. La obra que sumó capítulos más recientemente (fallback).
+
+Si el hero muestra una obra equivocada, tocá **Cambiar** una vez y queda fija. Tocar **Continuar** también la confirma.
+
 ### Datos por obra
 
 - Portada, título real y título alternativo.
@@ -124,7 +136,19 @@ Cada pestaña guarda su propio orden y filtro de género. La URL cambia a `#/ley
 
 ---
 
-## 5. Cómo se sincroniza
+## 5. Portadas y protección de hotlink
+
+Las portadas salen de `img1mw.xyz` / `img2mw.xyz`, que **solo entregan la imagen si el `Referer` es de `manhwaweb.com`**. Desde otro dominio devuelven `403 — Sorry, you have been blocked`, y el navegador no permite falsificar ese header.
+
+Por eso existe `api/img.js`: una función serverless de Vercel que pide la imagen con el `Referer` correcto, la devuelve con cache larga (`s-maxage=604800`) y solo acepta los hosts de portadas. El resto de las imágenes (toptoon, etc.) se cargan directo.
+
+- No toca tu token ni tus datos: recibe una URL de imagen y devuelve la imagen.
+- Vercel detecta la carpeta `/api` sola; no hay que configurar nada.
+- Si abrís el dashboard con un servidor estático local (`python -m http.server`), `/api/img` no existe y vas a ver los placeholders violetas. Es lo esperado.
+
+---
+
+## 6. Cómo se sincroniza
 
 | Momento | Acción |
 |---|---|
@@ -139,24 +163,26 @@ Detalles de obra se refrescan cada **12 horas** y la biblioteca se guarda como s
 
 ---
 
-## 6. Límites conocidos
+## 7. Límites conocidos
 
 - Solo aparecen obras que estén en **Mis Manhwas**. Lo leído sin agregarlo a la biblioteca no existe en la API.
 - ManhwaWeb guarda **un solo capítulo actual por obra**, no un historial. El historial del dashboard se construye desde la primera sincronización.
 - El sitio **no tiene estrellas**; por eso el dashboard no las inventa.
 - Si cambiás la contraseña o cerrás sesión, el token se invalida: reconectá.
 - El scraping de la API puede romperse si ManhwaWeb cambia sus endpoints.
+- Las portadas dependen de `/api/img`: en Vercel funcionan; en un host puramente estático hay que replicar ese proxy.
 
 ---
 
-## 7. Problemas frecuentes
+## 8. Problemas frecuentes
 
 | Síntoma | Solución |
 |---|---|
 | “Tu sesión expiró” | Volvé a abrir el dashboard desde el userscript o pegá un token nuevo |
 | “sin conexión” | Revisá que `api.manhwaweb.com` responda; puede haber bloqueo de red |
 | No aparecen obras nuevas | Esperá 15 s o tocá el botón ↻ |
-| Las portadas no cargan | `img1mw.xyz` / `img2mw.xyz` bloqueados por el navegador o por un adblock |
+| Las portadas no cargan | Verificá que `/api/img` esté deployado (Vercel). Localmente no existe y se ven placeholders |
+| El hero muestra otra obra | Tocá **Cambiar** en el hero y elegí la que estás leyendo |
 | El botón del userscript no aparece | Verificá que el script esté habilitado para `manhwaweb.com` |
 
 ---

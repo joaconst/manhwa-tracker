@@ -12,6 +12,7 @@ const K = {
   notes: `${NS}.notes`,
   seen: `${NS}.seen`,
   prefs: `${NS}.prefs`,
+  current: `${NS}.current`,
 };
 
 const DETAIL_TTL = 1000 * 60 * 60 * 24 * 7; // 7 días
@@ -180,6 +181,33 @@ export function markSeen(id, total) {
   map[id] = Number(total) || 0;
   write(K.seen, map);
   return map;
+}
+
+/* ---------------- lectura actual ---------------- */
+
+/**
+ * ManhwaWeb no expone cuándo leíste cada obra, así que "lectura actual" se
+ * resuelve localmente: lo que elegís en el dashboard o el último cambio de
+ * capítulo detectado. Así el hero no adivina.
+ */
+export function loadCurrent() {
+  const value = read(K.current, null);
+  if (!value || typeof value !== "object" || !value.id) return null;
+  return { id: String(value.id), at: Number(value.at) || 0 };
+}
+
+export function saveCurrent(id) {
+  if (!id) {
+    try {
+      localStorage.removeItem(K.current);
+    } catch {
+      /* noop */
+    }
+    return null;
+  }
+  const value = { id: String(id), at: Date.now() };
+  write(K.current, value);
+  return value;
 }
 
 /* ---------------- preferencias ---------------- */

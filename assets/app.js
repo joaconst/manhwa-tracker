@@ -23,6 +23,7 @@ const state = {
   notes: store.loadNotes(),
   seen: store.loadSeen(),
   prefs: store.loadPrefs(),
+  current: store.loadCurrent(),
   loading: !snapshot,
   syncing: false,
   enriching: false,
@@ -228,6 +229,7 @@ function detectChanges(next) {
   if (events.length) {
     state.history = store.pushHistory(events);
     const latest = events[0];
+    state.current = store.saveCurrent(latest.id);
     ui.toast(
       latest.chapter ? `Vas por el capítulo ${latest.chapter}` : "Progreso actualizado",
       latest.title,
@@ -346,13 +348,49 @@ function lastReadMap() {
 function currentReading() {
   const items = state.data.leyendo || [];
   if (!items.length) return null;
+
+  // 1) Lo que elegiste (o el último capítulo que el dashboard te vio leer).
+  if (state.current) {
+    const pinned = items.find((item) => item.id === state.current.id);
+    if (pinned) return pinned;
+  }
+
+  // 2) La obra con el cambio de capítulo más reciente detectado.
   const last = lastReadMap();
+  const known = items
+    .filter((item) => last.get(item.id))
+    .sort((a, b) => (last.get(b.id) || 0) - (last.get(a.id) || 0));
+  if (known.length) return known[0];
+
+  // 3) Sin señales: la última obra que sumó capítulos.
   return [...items].sort(
-    (a, b) =>
-      (last.get(b.id) || 0) - (last.get(a.id) || 0) ||
-      (b.updatedAt || 0) - (a.updatedAt || 0) ||
-      progressOf(b) - progressOf(a)
+    (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0) || progressOf(b) - progressOf(a)
   )[0];
+}
+
+function setCurrent(id, { repaint = true } = {}) {
+  if (!id) return;
+  state.current = store.saveCurrent(id);
+  if (repaint) paintShell();
+}
+
+function switchCurrent() {
+  const items = [...(state.data.leyendo || [])];
+  if (!items.length) return;
+
+  const last = lastReadMap();
+  items.sort(
+    (a, b) => (last.get(b.id) || 0) - (last.get(a.id) || 0) || (b.updatedAt || 0) - (a.updatedAt || 0)
+  );
+
+  ui.openPicker(
+    {
+      items,
+      currentId: currentReading()?.id || "",
+      onPick: (id) => setCurrent(id),
+    },
+    () => {}
+  );
 }
 
 const progressOf = (item) => (item.total ? item.read / item.total : 0);
@@ -423,7 +461,12 @@ function paintShell() {
         lastReadAt: current ? lastReadMap().get(current.id) : 0,
         newCount: current ? newCounts()[current.id] || 0 : 0,
       },
-      { setTab, open: openDetail }
+      {
+        setTab,
+        open: openDetail,
+        switchCurrent,
+        markReading: (id) => setCurrent(id),
+      }
     );
   } else {
     el.hero.innerHTML = "";
@@ -676,9 +719,14 @@ function bindStatic() {
     if (event.key === "Escape" && !el.menu.hidden) toggleMenu(false);
   });
 
+  // Cualquier "Continuar" (hero o modal) confirma cuál es tu lectura actual.
+  document.addEventListener("click", (event) => {
+    const link = event.target.closest("[data-continue]");
+    if (link?.dataset.continue) setCurrent(link.dataset.continue);
+  });
+
   let searchTimer = null;
-  el.search.addEventListener("input", () => {
-    clearTimeout(searchTimer);
+  el.search.addEventListener("input", () => {    clearTimeout(searchTimer);
     searchTimer = setTimeout(() => {
       state.query = el.search.value;
       paintGrid();

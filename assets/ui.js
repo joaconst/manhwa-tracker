@@ -2,7 +2,7 @@
  * Render del dashboard. HTML string + listeners puntuales.
  */
 
-import { chapterUrl, workUrl } from "./api.js";
+import { chapterUrl, coverSrc, workUrl } from "./api.js";
 import { activityMarkup, relativeTime, shortDate } from "./charts.js";
 
 export const $ = (sel, root = document) => root.querySelector(sel);
@@ -20,11 +20,11 @@ export const progress = (item) => {
   return Math.max(0, Math.min(100, Math.round((item.read / item.total) * 100)));
 };
 
-const coverStyle = (item) => (item.cover ? `style="--cover:url('${esc(item.cover)}')"` : "");
+const coverStyle = (item) => (item.cover ? `style="--cover:url('${esc(coverSrc(item.cover))}')"` : "");
 
 const img = (src, alt, cls = "") =>
   src
-    ? `<img class="${cls}" src="${esc(src)}" alt="${esc(alt)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.style.opacity=0" />`
+    ? `<img class="${cls}" src="${esc(coverSrc(src))}" alt="${esc(alt)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.style.opacity=0" />`
     : `<div class="img-ph ${cls}" aria-hidden="true"></div>`;
 
 /* ------------------------------------------------------------------ */
@@ -88,6 +88,7 @@ export function renderHero(el, ctx, actions) {
       <div class="hero-pills">
         <span class="live-pill"><i></i>Leyendo ahora</span>
         ${newCount > 0 ? `<span class="pill pill--new">+${newCount} nuevo${newCount === 1 ? "" : "s"}</span>` : ""}
+        <button class="hero-switch" data-switch type="button" title="Elegir otra obra como lectura actual">Cambiar</button>
       </div>
       <h2 class="hero-title">${esc(detail?.title || current.title)}</h2>
       <p class="hero-meta">
@@ -102,7 +103,7 @@ export function renderHero(el, ctx, actions) {
         <div class="track"><div class="fill" style="width:${pct}%"></div></div>
       </div>
       <div class="hero-actions">
-        <a class="btn btn-primary" href="${esc(chapterUrl(current.realId, isDone ? total || read : next))}" target="_blank" rel="noopener noreferrer">
+        <a class="btn btn-primary" data-continue="${esc(current.id)}" href="${esc(chapterUrl(current.realId, isDone ? total || read : next))}" target="_blank" rel="noopener noreferrer">
           ${isDone ? `Releer final · Cap. ${total || read}` : read ? `Continuar · Cap. ${next}` : "Empezar · Cap. 1"}
           <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h13M12 5l7 7-7 7"/></svg>
         </a>
@@ -115,6 +116,7 @@ export function renderHero(el, ctx, actions) {
     </div>
   </article>`;
 
+  $("[data-switch]", el)?.addEventListener("click", () => actions.switchCurrent());
   $("[data-open]", el)?.addEventListener("click", () => actions.open(current.id));
 }
 
@@ -291,7 +293,7 @@ export function openModal({ item, detail, note, onNote, newCount }, onClose) {
             ${detail?.platform ? `<span>Plataforma <b>${esc(detail.platform)}</b></span>` : ""}
           </div>
           <div class="modal-actions">
-            <a class="btn btn-primary" href="${esc(chapterUrl(item.realId, total && read >= total ? total : Math.min(total || read + 1, read + 1)))}" target="_blank" rel="noopener noreferrer">
+            <a class="btn btn-primary" data-continue="${esc(item.id)}" href="${esc(chapterUrl(item.realId, total && read >= total ? total : Math.min(total || read + 1, read + 1)))}" target="_blank" rel="noopener noreferrer">
               ${
                 !read
                   ? "Empezar en Cap. 1"
@@ -417,6 +419,69 @@ export function openModal({ item, detail, note, onNote, newCount }, onClose) {
   if (detail?.chapters?.length) update(detail);
 
   return { close, update };
+}
+
+/* ------------------------------------------------------------------ */
+/* selector de lectura actual                                         */
+/* ------------------------------------------------------------------ */
+
+export function openPicker({ items, currentId, onPick }, onClose) {
+  const root = $("#modal-root");
+
+  root.innerHTML = `<div class="modal modal--picker" role="dialog" aria-modal="true" aria-labelledby="picker-title">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-panel modal-panel--sm">
+      <button class="modal-close" data-close aria-label="Cerrar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+      <header class="picker-head">
+        <h2 id="picker-title">¿Qué estás leyendo?</h2>
+        <p>Elegí la obra que va en “Leyendo ahora”. Se guarda en este navegador.</p>
+      </header>
+      <div class="picker-list">
+        ${items
+          .map(
+            (item) => `<button class="picker-row ${item.id === currentId ? "is-current" : ""}" data-pick="${esc(item.id)}" type="button">
+            <span class="picker-cover">${img(item.cover, item.title)}</span>
+            <span class="picker-text">
+              <strong>${esc(item.title)}</strong>
+              <small>Cap. ${item.read || 0}${item.total ? ` de ${item.total}` : ""}${item.genres?.length ? ` · ${esc(item.genres[0])}` : ""}</small>
+            </span>
+            <span class="picker-check" aria-hidden="true">✓</span>
+          </button>`
+          )
+          .join("")}
+      </div>
+    </div>
+  </div>`;
+
+  document.body.classList.add("is-locked");
+  const restoreFocus = document.activeElement;
+
+  let closed = false;
+  const close = () => {
+    if (closed) return;
+    closed = true;
+    document.body.classList.remove("is-locked");
+    root.innerHTML = "";
+    document.removeEventListener("keydown", onKey);
+    restoreFocus?.focus?.({ preventScroll: true });
+    onClose?.();
+  };
+
+  const onKey = (event) => {
+    if (event.key === "Escape") close();
+  };
+  document.addEventListener("keydown", onKey);
+
+  $$("[data-close]", root).forEach((node) => node.addEventListener("click", close));
+  $$("[data-pick]", root).forEach((node) =>
+    node.addEventListener("click", () => {
+      onPick?.(node.dataset.pick);
+      close();
+    })
+  );
+  $(".modal-close", root)?.focus?.();
 }
 
 /* ------------------------------------------------------------------ */

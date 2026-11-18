@@ -111,6 +111,24 @@ export function toList(value) {
 export const chapterUrl = (realId, n) => `${SITE}/leer/${realId}-${n}_01`;
 export const workUrl = (realId) => `${SITE}/manhwa/${realId}`;
 
+/**
+ * Las portadas de img1mw/img2mw solo se entregan si el Referer es de
+ * manhwaweb.com. El navegador no puede falsificarlo, así que pasan por
+ * /api/img (función propia en Vercel). El resto de hosts se usan directo.
+ */
+const PROTECTED_COVER_HOSTS = new Set(["img1mw.xyz", "img2mw.xyz"]);
+
+export function coverSrc(url) {
+  if (!url) return "";
+  try {
+    const { hostname, protocol } = new URL(url);
+    if (protocol !== "https:" || !PROTECTED_COVER_HOSTS.has(hostname)) return url;
+    return `/api/img?u=${encodeURIComponent(url)}`;
+  } catch {
+    return url;
+  }
+}
+
 export async function pool(items, limit, worker) {
   let index = 0;
   const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
