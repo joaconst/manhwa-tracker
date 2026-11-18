@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Mi Biblioteca · ManhwaWeb</title>
+  <meta name="description" content="Tu biblioteca personal de ManhwaWeb: qué estás leyendo, qué tenés planeado y qué terminaste." />
+  <meta name="theme-color" content="#07060b" />
+  <meta name="color-scheme" content="dark" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/styles.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23120f1c'/%3E%3Cpath d='M20 18h9c4 0 7 2 7 6v22c0-3-3-5-7-5h-9z' fill='%23a78bfa'/%3E%3Cpath d='M44 18h-9c-4 0-7 2-7 6v22c0-3 3-5 7-5h9z' fill='%237c3aed'/%3E%3C/svg%3E" />
+</head>
+<body>
+  <div class="ambient" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <!-- ============ CONNECT ============ -->
+  <main id="view-connect" class="connect-view" hidden>
+    <div class="connect-card">
+      <div class="brand brand--lg">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" fill="none"><path d="M7 5h6.5c2.6 0 4.5 1.6 4.5 4.2V27c0-2.2-1.9-3.6-4.5-3.6H7z" fill="currentColor" opacity=".95"/><path d="M25 5h-6.5C15.9 5 14 6.6 14 9.2V27c0-2.2 1.9-3.6 4.5-3.6H25z" fill="currentColor" opacity=".55"/></svg>
+        </span>
+        <span class="brand-text">Mi Biblioteca</span>
+      </div>
+
+      <h1>Conectá tu cuenta</h1>
+      <p class="lead">
+        El dashboard lee tu biblioteca de ManhwaWeb directo desde tu navegador.
+        No hay servidor ni base de datos: tu token se queda acá.
+      </p>
+
+      <ol class="steps">
+        <li>
+          <span class="step-n">1</span>
+          <div>
+            <strong>Instalá el userscript</strong>
+            <p>Violentmonkey + <code>manhwaweb-tracker.user.js</code>. Después abrí el dashboard desde el botón <em>Mis lecturas</em> y se conecta solo.</p>
+          </div>
+        </li>
+        <li>
+          <span class="step-n">2</span>
+          <div>
+            <strong>O pegá tu token a mano</strong>
+            <p>En ManhwaWeb: <code>F12 → Application → Local Storage → tokenCommers</code>. Copiá el valor y pegalo acá.</p>
+          </div>
+        </li>
+      </ol>
+
+      <form id="connect-form" novalidate>
+        <label for="token-input">Token de sesión</label>
+        <div class="token-row">
+          <input id="token-input" type="password" autocomplete="off" spellcheck="false" placeholder="eyJhbGciOiJIUzI1NiIs…" aria-describedby="connect-error" />
+          <button type="button" id="btn-toggle-token" class="icon-btn" title="Mostrar / ocultar" aria-label="Mostrar u ocultar token">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2.2 12S5.8 5.5 12 5.5 21.8 12 21.8 12 18.2 18.5 12 18.5 2.2 12 2.2 12Z"/><circle cx="12" cy="12" r="3.2"/></svg>
+          </button>
+        </div>
+        <button class="btn btn-primary" type="submit">Conectar</button>
+      </form>
+
+      <p class="hint" id="connect-error" role="alert"></p>
+      <p class="hint">Tu token equivale a tu sesión: no lo compartas ni lo subas a ningún lado.</p>
+    </div>
+  </main>
+
+  <!-- ============ DASHBOARD ============ -->
+  <div id="view-dash" hidden>
+    <header class="topbar">
+      <div class="topbar-inner">
+        <a class="brand" href="#/leyendo">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" fill="none"><path d="M7 5h6.5c2.6 0 4.5 1.6 4.5 4.2V27c0-2.2-1.9-3.6-4.5-3.6H7z" fill="currentColor" opacity=".95"/><path d="M25 5h-6.5C15.9 5 14 6.6 14 9.2V27c0-2.2 1.9-3.6 4.5-3.6H25z" fill="currentColor" opacity=".55"/></svg>
+          </span>
+          <span class="brand-text">Mi Biblioteca</span>
+        </a>
+
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="6.4"/><path d="m16 16 4.2 4.2"/></svg>
+          <input id="search" type="search" placeholder="Buscar en esta sección…" aria-label="Buscar" />
+          <span id="search-count" class="search-count"></span>
+        </div>
+
+        <div class="topbar-actions">
+          <span class="sync" id="sync-status"><i class="dot" aria-hidden="true"></i><span id="sync-text">conectando…</span></span>
+          <button id="btn-refresh" class="icon-btn" title="Actualizar ahora" aria-label="Actualizar ahora">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v4.5h-4.5"/></svg>
+          </button>
+          <button id="btn-menu" class="icon-btn" title="Ajustes" aria-label="Ajustes" aria-expanded="false" aria-controls="menu">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="menu" id="menu" hidden>
+        <div class="menu-head">
+          <span class="menu-label">Cuenta</span>
+          <strong id="menu-user">—</strong>
+        </div>
+        <button class="menu-item" id="btn-export">Exportar biblioteca (JSON)</button>
+        <button class="menu-item" id="btn-copy-token">Copiar token</button>
+        <button class="menu-item menu-item--danger" id="btn-disconnect">Desconectar este navegador</button>
+        <p class="menu-foot">Datos no oficiales de manhwaweb.com</p>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <section id="hero-slot" class="hero-slot"></section>
+      <section id="stats" class="stats" aria-label="Estadísticas"></section>
+
+      <nav class="tabs" id="tabs" role="tablist" aria-label="Categorías"></nav>
+
+      <div class="toolbar">
+        <p class="section-title" id="section-title"></p>
+        <div class="toolbar-controls">
+          <label class="select">
+            <span>Género</span>
+            <select id="filter-genre"></select>
+          </label>
+          <label class="select">
+            <span>Orden</span>
+            <select id="sort">
+              <option value="recent">Actualización</option>
+              <option value="progress">Progreso</option>
+              <option value="title">Título A–Z</option>
+              <option value="total">Capítulos</option>
+            </select>
+          </label>
+          <div class="seg" id="view-toggle" role="group" aria-label="Vista">
+            <button data-view="grid" class="is-active" title="Grilla" aria-label="Vista de grilla">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>
+            </button>
+            <button data-view="list" title="Lista" aria-label="Vista de lista">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <section id="grid" class="grid" aria-live="polite"></section>
+      <p class="empty" id="empty" hidden></p>
+
+      <footer class="foot">
+        <span class="foot-brand">Mi Biblioteca</span>
+        <span class="foot-sep">·</span>
+        <span>lectura no oficial de manhwaweb.com</span>
+        <span class="foot-spacer"></span>
+        <span id="foot-sync">—</span>
+      </footer>
+    </main>
+  </div>
+
+  <div id="modal-root"></div>
+  <div id="toasts" class="toasts" aria-live="polite" aria-atomic="false"></div>
+
+  <script type="module" src="assets/app.js"></script>
+</body>
+</html>
