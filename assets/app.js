@@ -109,7 +109,7 @@ async function boot() {
     ui.renderSkeletons(el.grid, 12);
     paintShell();
   } else {
-    paintAll();
+    paintAll({ enter: true });
   }
   paintSync();
 
@@ -180,13 +180,14 @@ async function sync({ silent = false } = {}) {
 
     detectChanges(next);
     baselineSeen(next);
+    const firstLoad = state.loading;
     state.data = next;
     state.loading = false;
     state.lastSync = Date.now();
     mergeDetails();
     store.saveSnapshot(state.data);
 
-    paintAll();
+    paintAll({ enter: firstLoad });
     enrichMissing();
 
     if (!silent) paintSync();
@@ -441,13 +442,13 @@ function filteredItems() {
   return result;
 }
 
-function paintAll() {
-  paintShell();
-  paintGrid();
+function paintAll({ enter = false } = {}) {
+  paintShell({ enter });
+  paintGrid({ enter });
   paintSync();
 }
 
-function paintShell() {
+function paintShell({ enter = false } = {}) {
   const tab = state.prefs.tab;
   ui.renderTabs(el.tabs, tabsCounts(), tab, setTab);
 
@@ -468,8 +469,10 @@ function paintShell() {
         markReading: (id) => setCurrent(id),
       }
     );
+    if (enter) ui.replayEnter(el.hero, "is-entering", 420);
   } else {
     el.hero.innerHTML = "";
+    el.hero.classList.remove("is-entering");
   }
 
   const items = state.data[tab] || [];
@@ -500,7 +503,7 @@ function paintShell() {
   if (state.user?.nick) el.menuUser.textContent = `@${state.user.nick}`;
 }
 
-function paintGrid() {
+function paintGrid({ enter = false } = {}) {
   const tab = state.prefs.tab;
   const all = state.data[tab] || [];
   const items = filteredItems();
@@ -519,12 +522,12 @@ function paintGrid() {
 
   if (!items.length) {
     el.grid.innerHTML = "";
-    ui.renderEmpty(el.empty, tab, state.query, all.length);
+    ui.renderEmpty(el.empty, tab, state.query, all.length, { enter });
     return;
   }
 
   el.empty.hidden = true;
-  ui.renderGrid(el.grid, items, counts, state.prefs.view, { open: openDetail });
+  ui.renderGrid(el.grid, items, counts, state.prefs.view, { open: openDetail }, { enter });
 }
 
 function paintSync() {
@@ -573,7 +576,7 @@ function setTab(tab) {
   el.search.value = "";
   store.savePrefs(state.prefs);
   history.replaceState(null, "", `#/${tab}`);
-  paintAll();
+  paintAll({ enter: true });
 }
 
 async function openDetail(id) {
@@ -687,7 +690,7 @@ function bindStatic() {
       paintGrid();
       await sync({ silent: true });
       state.prefs.tab = "leyendo";
-      paintAll();
+      paintAll({ enter: true });
     } catch (err) {
       el.connectError.textContent =
         err?.kind === "auth"

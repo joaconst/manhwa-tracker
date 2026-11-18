@@ -32,18 +32,99 @@ const img = (src, alt, cls = "") =>
 /* ------------------------------------------------------------------ */
 
 export function renderTabs(el, counts, active, onTab) {
-  el.innerHTML = Object.keys(TAB_LABEL)
-    .map(
-      (key) => `<button class="tab ${key === active ? "is-active" : ""}" role="tab"
-        aria-selected="${key === active}" data-tab="${key}">
-        ${TAB_LABEL[key]}<span class="tab-count">${counts[key] ?? 0}</span>
-      </button>`
-    )
-    .join("");
+  let indicator = el.querySelector(".tab-indicator");
 
-  $$(".tab", el).forEach((btn) => {
-    btn.addEventListener("click", () => onTab(btn.dataset.tab));
-  });
+  if (!indicator) {
+    el.innerHTML =
+      `<span class="tab-indicator-bg" aria-hidden="true"></span>` +
+      `<span class="tab-indicator" aria-hidden="true"></span>` +
+      Object.keys(TAB_LABEL)
+        .map(
+          (key) => `<button class="tab ${key === active ? "is-active" : ""}" role="tab"
+            aria-selected="${key === active}" data-tab="${key}">
+            <span>${TAB_LABEL[key]}</span><span class="tab-count">${counts[key] ?? 0}</span>
+          </button>`
+        )
+        .join("");
+
+    $$(".tab", el).forEach((btn) => {
+      btn.addEventListener("click", () => onTab(btn.dataset.tab));
+    });
+
+    window.addEventListener(
+      "resize",
+      () => {
+        const currentActive = el.querySelector(".tab.is-active");
+        if (currentActive) positionTabIndicator(el, currentActive);
+      },
+      { passive: true }
+    );
+
+    // Con la tipografía real los anchos cambian: si medimos antes, la píldora queda corrida.
+    document.fonts?.ready.then(() => {
+      const current = el.querySelector(".tab.is-active");
+      if (current) positionTabIndicator(el, current);
+    });
+  } else {
+    $$(".tab", el).forEach((btn) => {
+      const key = btn.dataset.tab;
+      const isAct = key === active;
+      btn.classList.toggle("is-active", isAct);
+      btn.setAttribute("aria-selected", isAct ? "true" : "false");
+      const countEl = btn.querySelector(".tab-count");
+      if (countEl) countEl.textContent = counts[key] ?? 0;
+    });
+  }
+
+  const activeBtn = el.querySelector(`.tab[data-tab="${active}"]`);
+  if (activeBtn) {
+    const changed = el.dataset.active !== active;
+    el.dataset.active = active;
+    requestAnimationFrame(() => {
+      positionTabIndicator(el, activeBtn);
+      if (changed) revealTab(el, activeBtn);
+    });
+  }
+}
+
+function prefersReduced() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/** Mantiene visible el tab activo cuando la barra desborda en mobile. */
+function revealTab(container, btn) {
+  const pad = 16;
+  const start = btn.offsetLeft - pad;
+  const end = btn.offsetLeft + btn.offsetWidth + pad;
+  const viewStart = container.scrollLeft;
+  const viewEnd = viewStart + container.clientWidth;
+  if (start < viewStart) {
+    container.scrollTo({ left: Math.max(0, start), behavior: prefersReduced() ? "auto" : "smooth" });
+  } else if (end > viewEnd) {
+    container.scrollTo({ left: end - container.clientWidth, behavior: prefersReduced() ? "auto" : "smooth" });
+  }
+}
+
+function positionTabIndicator(container, activeBtn) {
+  const line = container.querySelector(".tab-indicator");
+  const bg = container.querySelector(".tab-indicator-bg");
+  if (!line || !activeBtn) return;
+
+  if (activeBtn.offsetWidth === 0) {
+    setTimeout(() => positionTabIndicator(container, activeBtn), 60);
+    return;
+  }
+
+  const left = activeBtn.offsetLeft;
+  line.style.transform = `translateX(${left + 10}px)`;
+  line.style.width = `${Math.max(20, activeBtn.offsetWidth - 20)}px`;
+
+  if (bg) {
+    bg.style.transform = `translateX(${left + 2}px)`;
+    bg.style.width = `${Math.max(20, activeBtn.offsetWidth - 4)}px`;
+  }
+
+  container.classList.add("is-ready");
 }
 
 /* ------------------------------------------------------------------ */
@@ -197,10 +278,11 @@ export function renderSkeletons(el, count = 12) {
 
 const newBadge = (count) => (count > 0 ? `<span class="chip chip--new">+${count} nuevo${count === 1 ? "" : "s"}</span>` : "");
 
-function card(item, counts, actions) {
+function card(item, counts, actions, enterIndex = null) {
   const pct = progress(item);
   const full = pct >= 100;
-  return `<article class="card" data-id="${esc(item.id)}">
+  const stagger = enterIndex === null ? "" : ` style="--i:${enterIndex}"`;
+  return `<article class="card" data-id="${esc(item.id)}"${stagger}>
     <button class="card-hit" data-open aria-label="Abrir ${esc(item.title)}"></button>
     <div class="card-cover">
       ${img(item.cover, item.title)}
@@ -218,9 +300,11 @@ function card(item, counts, actions) {
   </article>`;
 }
 
-export function renderGrid(el, items, counts, view, actions) {
-  el.className = `grid ${view === "list" ? "is-list" : ""}`;
-  el.innerHTML = items.map((item) => card(item, counts, actions)).join("");
+export function renderGrid(el, items, counts, view, actions, { enter = false } = {}) {
+  el.className = `grid ${view === "list" ? "is-list" : ""}${enter ? " is-entering" : ""}`.trim();
+  el.innerHTML = items
+    .map((item, index) => card(item, counts, actions, enter ? Math.min(index, 12) : null))
+    .join("");
 
   $$(".card", el).forEach((node) => {
     node.addEventListener("click", (event) => {
@@ -228,10 +312,24 @@ export function renderGrid(el, items, counts, view, actions) {
       actions.open(node.dataset.id);
     });
   });
+
+  if (enter) {
+    clearTimeout(el._enterTimer);
+    el._enterTimer = setTimeout(() => el.classList.remove("is-entering"), 760);
+  }
 }
 
-export function renderEmpty(el, tab, query, total) {
+export function replayEnter(node, cls, ms) {
+  node.classList.remove(cls);
+  void node.offsetWidth; // reinicia la animación aunque el nodo se reutilice
+  node.classList.add(cls);
+  clearTimeout(node._enterTimer);
+  node._enterTimer = setTimeout(() => node.classList.remove(cls), ms);
+}
+
+export function renderEmpty(el, tab, query, total, { enter = false } = {}) {
   el.hidden = false;
+  if (enter) replayEnter(el, "is-entering", 420);
   const icon = query
     ? `<div class="empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></div>`
     : `<div class="empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6 6h10M6 10h10"/></svg></div>`;
