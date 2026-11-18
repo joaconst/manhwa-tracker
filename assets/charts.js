@@ -75,7 +75,7 @@ export function activityMarkup(history) {
         <strong class="activity-total">${total} <small>capítulo${total === 1 ? "" : "s"}</small></strong>
       </div>
       <div class="streak">
-        <span class="streak-flame" aria-hidden="true">◆</span>
+        <span class="streak-flame" aria-hidden="true"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M12 23c-4.97 0-9-4.03-9-9 0-4.16 2.84-7.66 6.75-8.68.46-.12.89.26.79.72-.41 1.94-.03 3.65 1.05 4.88 1.01-2.4 2.37-4.49 4.09-6.22.34-.34.91-.21 1.07.24C18.3 8.87 21 12.88 21 15c0 4.42-4.03 8-9 8z"/></svg></span>
         <span><b>${days}</b> día${days === 1 ? "" : "s"} de racha</span>
       </div>
     </div>

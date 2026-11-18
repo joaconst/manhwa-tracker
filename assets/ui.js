@@ -232,8 +232,12 @@ export function renderGrid(el, items, counts, view, actions) {
 
 export function renderEmpty(el, tab, query, total) {
   el.hidden = false;
+  const icon = query
+    ? `<div class="empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></div>`
+    : `<div class="empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6 6h10M6 10h10"/></svg></div>`;
+
   if (query) {
-    el.innerHTML = `<strong>Sin resultados</strong><span>Nada coincide con “${esc(query)}” en esta sección.</span>`;
+    el.innerHTML = `${icon}<strong>Sin resultados</strong><span>Nada coincide con “${esc(query)}” en esta sección.</span>`;
     return;
   }
   const copy = {
@@ -242,7 +246,7 @@ export function renderEmpty(el, tab, query, total) {
     finalizado: ["Todavía no terminaste ninguna", "Cuando marques una obra como “Finalizado” va a aparecer en esta sección."],
   }[tab] || ["Nada por acá", ""];
 
-  el.innerHTML = `<strong>${esc(copy[0])}</strong><span>${esc(copy[1])}</span>${
+  el.innerHTML = `${icon}<strong>${esc(copy[0])}</strong><span>${esc(copy[1])}</span>${
     total === 0 && tab === "leyendo" ? `<span class="hint">Biblioteca sincronizada, pero este estado está vacío en tu cuenta.</span>` : ""
   }`;
 }
@@ -447,7 +451,7 @@ export function openPicker({ items, currentId, onPick }, onClose) {
               <strong>${esc(item.title)}</strong>
               <small>Cap. ${item.read || 0}${item.total ? ` de ${item.total}` : ""}${item.genres?.length ? ` · ${esc(item.genres[0])}` : ""}</small>
             </span>
-            <span class="picker-check" aria-hidden="true">✓</span>
+            <span class="picker-check" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
           </button>`
           )
           .join("")}
